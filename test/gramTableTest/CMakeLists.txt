@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.6)
+project(GramTableTest)
+add_executable(GramTableTest GramTableTest.cpp)
+target_link_libraries(GramTableTest PUBLIC gtest pthread parser)
+#target_compile_options(GramTableTest PUBLIC "-stdlib=libc++")
+#target_link_options(GramTableTest PUBLIC "-stdlib=libc++")
