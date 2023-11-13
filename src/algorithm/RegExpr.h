@@ -17,8 +17,15 @@ class TopDownRegExprRecognition
     bool recognition()
     {
         regular_expression();
+        std::cout << "cur info : \n";
         printStrInfo();
-        return isMatch();
+        if (isMatch())
+        {
+            std::cout << "matching string : " << inputStr.substr(0, curInputIndex) << std::endl;
+
+            return true;
+        }
+        return false;
     }
     //regular_expressions ---> compound_re*
     bool regular_expression()
@@ -49,7 +56,7 @@ class TopDownRegExprRecognition
         ret = simple_re();
         return getCurIndex() != startStatus ;
     }
-
+    //repeat_re ---> simple_re ’*’
     bool repeat_re()
     {
         std::cout << std::endl << "repeat_re\n";
@@ -62,37 +69,44 @@ class TopDownRegExprRecognition
         
         //has star
         //1) zero star
+#if 0
         curRegIndex = afterStarIndex.value();
         bool ret = regular_expression();
         if (ret) return ret;
         restoreIndex(startStatus);
+#endif
         //2) one plus start
-        
+        //()* will not stop 
+        //error ((a)*bc)*d(a*(b)*)* abcaabcdaababbba
         size_t maxStarNum = 0;
-        size_t simpleTokenLen = 0;
+        std::vector<size_t> tokenLenVe;
+        tokenLenVe.emplace_back(0);
         while (curInputIndex < inputStr.length())
         {
-            ret = simple_re();
-            if (simpleTokenLen == 0)
-                simpleTokenLen = curInputIndex - std::get<0>(startStatus);
-            if (ret)
+            bool ret = simple_re();
+            
+            size_t curTokenLen = curInputIndex - std::get<0>(startStatus);
+            std::cout << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" << curTokenLen << std::endl;
+            if (ret && curTokenLen)
             {
+                tokenLenVe.emplace_back(curTokenLen);
                 maxStarNum ++;
                 restoreRegIndex(std::get<1>(startStatus));
             }
             else
             {
+                std::cout << "**********************" << std::endl;
                 break;
             }
         }
         restoreIndex(startStatus);
         IndexStatus endStatus = getCurIndex();
-        for(size_t curStarNum = 1 ; curStarNum <= maxStarNum ; curStarNum ++)
+        for(size_t curStarNum = 0 ; curStarNum <= maxStarNum ; curStarNum ++)
         {
-                curInputIndex = std::get<0>(startStatus) + simpleTokenLen * curStarNum;
+                curInputIndex = std::get<0>(startStatus) + tokenLenVe[curStarNum];
                 curRegIndex = afterStarIndex.value();
                 regular_expression();
-                if (curInputIndex > std::get<0>(endStatus))
+                if (curRegIndex >= std::get<1>(endStatus))
                 {
                     endStatus = getCurIndex();
                 }
@@ -107,35 +121,6 @@ class TopDownRegExprRecognition
         }
         restoreIndex(startStatus);
         return false;
-#if 0
-        while(1){
-            
-            ret = simple_re();
-            if (ret)
-            {
-                //restoreRegIndex(std::get<1>(startStatus));
-                eatRegStr('*');
-                ret = regular_expression();
-//                if (isMatch()) 
-//                    ret = true;
-                if (ret )
-                {
-                    break;
-                }
-                else
-                {
-                    restoreRegIndex(std::get<1>(startStatus));
-
-                }
-            }
-            else
-            {
-                restoreIndex(startStatus);
-                break;
-            }
-        }
-#endif
-        return ret;
     }
     std::optional<size_t> hasStar()
     {
@@ -198,7 +183,7 @@ class TopDownRegExprRecognition
     private:
     bool isMatch()
     {
-        return regStr.length() == curRegIndex && inputStr.length() == curInputIndex;
+        return regStr.length() == curRegIndex;
     }
     bool more()
     {
