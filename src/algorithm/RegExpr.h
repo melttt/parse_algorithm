@@ -1,271 +1,192 @@
+#pragma once
+
 #include <string>
 #include <tuple>
 #include <stack>
 #include <optional>
 #include <iostream>
+#include <string_view>
+#include <set>
+
 class TopDownRegExprRecognition
 {
-
     public:
-    using IndexStatus = std::tuple<size_t,size_t>;
-    TopDownRegExprRecognition(std::string inputStr, std::string regStr)
-    :inputStr(inputStr), regStr(regStr), curInputIndex(0), curRegIndex(0)
+    class RegExprState
     {
-        
-    }
+        public:
+            std::string_view curRegExpr;
+            std::string_view curStr;
+            std::size_t curRegExprIndex;
+            std::size_t curStrIndex;
+            RegExprState(std::string_view curRegExpr, std::string_view curStr, std::size_t curRegExprIndex, std::size_t curStrIndex)
+            :curRegExpr{curRegExpr}, curStr{curStr}, curRegExprIndex{curRegExprIndex}, curStrIndex{curStrIndex}{}
 
-    bool recognition()
-    {
-        regular_expression();
-        std::cout << "cur info : \n";
-        printStrInfo();
-        if (isMatch())
-        {
-            std::cout << "matching string : " << inputStr.substr(0, curInputIndex) << std::endl;
-
-            return true;
-        }
-        return false;
-    }
-    //regular_expressions ---> compound_re*
-    bool regular_expression()
-    {
-        std::cout << std::endl << "regular_expression\n";
-        printStrInfo();
-        
-        bool ret = false;
-        IndexStatus startStatus, curStatus;
-        startStatus = curStatus = getCurIndex();
-        while(more() && (ret = compound_re()))
-        {
-            curStatus = getCurIndex();
-        }
-        
-        return startStatus != curStatus;
-    }
-    //compound_re ---> repeat_re | simple_re
-    bool compound_re()
-    {
-        std::cout << std::endl << "compound_re\n";
-        printStrInfo();
-        IndexStatus startStatus = getCurIndex();
-        bool ret = repeat_re();
-        if (ret) return true;
-        restoreIndex(startStatus);
-
-        ret = simple_re();
-        return getCurIndex() != startStatus ;
-    }
-    //repeat_re ---> simple_re ’*’
-    bool repeat_re()
-    {
-        std::cout << std::endl << "repeat_re\n";
-        printStrInfo();
-
-        IndexStatus startStatus = getCurIndex();
-        auto afterStarIndex = hasStar();
-        
-        if (afterStarIndex == std::nullopt) return false;
-        
-        //has star
-        //1) zero star
-#if 0
-        curRegIndex = afterStarIndex.value();
-        bool ret = regular_expression();
-        if (ret) return ret;
-        restoreIndex(startStatus);
-#endif
-        //2) one plus start
-        //()* will not stop 
-        //error ((a)*bc)*d(a*(b)*)* abcaabcdaababbba
-        size_t maxStarNum = 0;
-        std::vector<size_t> tokenLenVe;
-        tokenLenVe.emplace_back(0);
-        while (curInputIndex < inputStr.length())
-        {
-            bool ret = simple_re();
-            
-            size_t curTokenLen = curInputIndex - std::get<0>(startStatus);
-            std::cout << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^" << curTokenLen << std::endl;
-            if (ret && curTokenLen)
+            bool more() const
             {
-                tokenLenVe.emplace_back(curTokenLen);
-                maxStarNum ++;
-                restoreRegIndex(std::get<1>(startStatus));
+                if (curRegExprIndex < curRegExpr.length()) return true;
+                return false;
             }
-            else
+            bool operator==(const RegExprState &regExprState) const
             {
-                std::cout << "**********************" << std::endl;
-                break;
+                if (this->curRegExpr == regExprState.curRegExpr &&
+                    this->curStr == regExprState.curStr &&
+                    this->curRegExprIndex == regExprState.curRegExprIndex &&
+                    this->curStrIndex == regExprState.curStrIndex) return true;
+                return false;
             }
-        }
-        restoreIndex(startStatus);
-        IndexStatus endStatus = getCurIndex();
-        for(size_t curStarNum = 0 ; curStarNum <= maxStarNum ; curStarNum ++)
-        {
-                curInputIndex = std::get<0>(startStatus) + tokenLenVe[curStarNum];
-                curRegIndex = afterStarIndex.value();
-                regular_expression();
-                if (curRegIndex >= std::get<1>(endStatus))
+            bool operator<(const RegExprState &regExprState) const
+            {
+                if (this->curRegExpr < regExprState.curRegExpr) return true;
+                if (this->curRegExpr == regExprState.curRegExpr && this->curStr < regExprState.curStr)  return true;
+                if (this->curRegExpr == regExprState.curRegExpr && this->curStr == regExprState.curStr
+                    && this->curRegExprIndex < regExprState.curRegExprIndex) return true;
+                if (this->curRegExpr == regExprState.curRegExpr && this->curStr == regExprState.curStr
+                    && this->curRegExprIndex == regExprState.curRegExprIndex && this->curStrIndex < regExprState.curStrIndex) return true;
+                return false;
+            }
+            std::optional<size_t> peekRegExprStar() const
+            {
+                size_t tmpIndex = curRegExprIndex;
+                if (curRegExpr.at(tmpIndex) != ')' && curRegExpr.at(tmpIndex) != '(' && curRegExpr.at(tmpIndex) != '*' && tmpIndex + 1 < curRegExpr.length() 
+                        && curRegExpr[tmpIndex + 1] == '*')
                 {
-                    endStatus = getCurIndex();
+                    return tmpIndex + 2;
                 }
-        }
-
-        if (endStatus != startStatus)
-        {
-            curInputIndex = std::get<0>(endStatus);
-            curRegIndex = std::get<1>(endStatus);
-
-            return true;
-        }
-        restoreIndex(startStatus);
-        return false;
-    }
-    std::optional<size_t> hasStar()
-    {
-        size_t tmpIndex = curRegIndex;
-        if (regStr[tmpIndex] != ')' && regStr[tmpIndex] != '(' && regStr[tmpIndex] != '*' && tmpIndex + 1 < regStr.length() 
-                && regStr[tmpIndex + 1] == '*')
-        {
-            return tmpIndex + 2;
-        }
-        if (regStr[tmpIndex] == '(')
-        {
-            size_t bracketNum = 1;
-            while(++ tmpIndex < regStr.length())
-            {
-                if (regStr[tmpIndex] == '(') bracketNum ++;
-                if (regStr[tmpIndex] == ')')
+                if (curRegExpr.at(tmpIndex) == '(')
                 {
-                    if (-- bracketNum == 0)
+                    size_t bracketNum = 1;
+                    while(++ tmpIndex < curRegExpr.length())
                     {
-                        
-                        break;
+                        if (curRegExpr.at(tmpIndex) == '(') bracketNum ++;
+                        if (curRegExpr.at(tmpIndex) == ')')
+                        {
+                            if (-- bracketNum == 0)
+                            {        
+                                break;
+                            }
+                        }
+                    }
+                    if (++ tmpIndex < curRegExpr.length() && curRegExpr.at(tmpIndex) == '*')
+                    {
+                        return tmpIndex + 1;
                     }
                 }
+                return std::nullopt;
             }
-            if (++ tmpIndex < regStr.length() && regStr[tmpIndex] == '*')
+            void setCurRegExprIndex(std::size_t index)
             {
-                std::cout << "has start" << std::endl;
-                return tmpIndex + 1;
+                curRegExprIndex = index;
             }
-        }
-        return std::nullopt;
-    }
+            void setCurStrIndex(std::size_t index)
+            {
+                curStrIndex = index;
+            }
+            bool eatInputToken()
+            {
+                if (curRegExpr[curRegExprIndex] == curStr[curStrIndex])
+                {
+                    curStrIndex ++;
+                    curRegExprIndex ++;
+                    return true;
+                }
+                return false;
+            }
+            bool eatToken(char token)
+            {
+                if (curRegExpr[curRegExprIndex] == token)
+                {
+                    curRegExprIndex ++;
+                    return true;
+                }
+                return false;
 
-    bool simple_re()
-    {
-        std::cout << std::endl << "simple_re\n";
-        printStrInfo();
-        int ret = false;
-        IndexStatus startStatus = getCurIndex();
-        if (eatInputStr())
-        {
-            return true;
-        }
+            }
+            std::optional<size_t> peekRegExprCloseParen() const
+            {
+                auto tmpIndex = curRegExprIndex;
+                if (curRegExpr.at(tmpIndex) == '(')
+                {
+                    size_t bracketNum = 1;
+                    while(++ tmpIndex < curRegExpr.length())
+                    {
+                        if (curRegExpr.at(tmpIndex) == '(') bracketNum ++;
+                        if (curRegExpr.at(tmpIndex) == ')')
+                        {
+                            if (-- bracketNum == 0)
+                            {        
+                                return tmpIndex - curRegExprIndex - 1;
+                            }
+                        }
+                    }
+                }
 
-        if (eatRegStr('('))
-        {
-            ret = regular_expression();
-            if (eatRegStr(')'))
-            {
-                ret = true;
+                return std::nullopt;
             }
-            else
+            std::set<RegExprState> splitAlternatives() 
             {
-                ret = false;
-                restoreIndex(startStatus);
+                std::set<RegExprState> resultStates {};
+                for(size_t index = 0, startNum = 0, parenNum = 0; index <= curRegExpr.length(); index ++)
+                {
+                    if (index == curRegExpr.length() || (curRegExpr.at(index) == '|' && parenNum == 0))
+                    {   
+                        resultStates.insert({this->curRegExpr.substr(startNum, index - startNum), this->curStr, 0, this->curStrIndex});
+                        startNum = index + 1;
+                    }
+                    else if(curRegExpr.at(index) == '(')
+                    {
+                        parenNum ++;
+                    }
+                    else if(curRegExpr.at(index) == ')')
+                    {
+                        parenNum --;
+                    }
+                }
+                return resultStates;
             }
-        }
-        return ret;
-    }
+            void printStrInfo() const
+            {
+                
+                std::cout << curStr << "  | " << curRegExpr << std::endl;
+                for(decltype(inputStr.size()) i = 0 ; i <= curStr.length(); i ++)
+                {
+                    if (i != curStrIndex)
+                    {
+                        std::cout << " ";
+                    }
+                    else
+                    {
+                        std::cout << "^";
+                    }
+                }
+                std::cout << " | ";
+
+                for(decltype(regStr.size()) i = 0 ; i <= curRegExpr.length(); i ++)
+                {
+                    if (i != curRegExprIndex)
+                    {
+                        std::cout << " ";
+                    }
+                    else
+                    {
+                        std::cout << "^";
+                    }
+                }
+                std::cout << std::endl;
+
+            }
+    };
+
+    public:
+    TopDownRegExprRecognition(std::string inputStr, std::string regStr);
+    std::set<RegExprState> parseAlternativesExpr(RegExprState regExprState);
+    bool recognition();
+    std::set<RegExprState> parseMultiRegularExpr(std::set<RegExprState> origStates);
+    std::set<RegExprState> parseMultiCompoundExpr(RegExprState origState);
+    std::set<RegExprState> parseMultRepeatExpr(RegExprState origState);
+    std::set<RegExprState> parseMultSimpleExpr(RegExprState origState);
     private:
-    bool isMatch()
-    {
-        return regStr.length() == curRegIndex;
-    }
-    bool more()
-    {
-        if (curRegIndex < regStr.length() && curInputIndex < inputStr.length()) return true;
-        return false;
-    }
-
-    bool eatRegStr(char ch)
-    {
-        if (getRegToken() == ch)
-        {
-            curRegIndex ++;
-            return true;
-        }
-        return false;
-    }
-    void restoreRegIndex(size_t indexStatus)
-    {
-        curRegIndex = indexStatus;
-    }
-    void restoreIndex(IndexStatus indexStatus)
-    {
-        curInputIndex = std::get<0>(indexStatus);
-        curRegIndex = std::get<1>(indexStatus);
-    }
-
-    bool eatInputStr()
-    {
-        if (getInputToken() == getRegToken())
-        {
-            curInputIndex ++;
-            curRegIndex ++;
-            return true;
-        }
-        return false;
-    }
-
-    char getInputToken()
-    {
-         return inputStr[curInputIndex];
-    }
-
-    char getRegToken()
-    {
-        return regStr[curRegIndex];
-    }
-    std::tuple<size_t,size_t> getCurIndex()
-    {
-        return {curInputIndex, curRegIndex};
-    }
-    void printStrInfo()
-    {
-        std::cout << inputStr << "  | " << regStr << std::endl;
-        for(decltype(inputStr.size()) i = 0 ; i <= inputStr.length(); i ++)
-        {
-            if (i != curInputIndex)
-            {
-                std::cout << " ";
-            }
-            else
-            {
-                std::cout << "^";
-            }
-        }
-        std::cout << " | ";
-
-        for(decltype(regStr.size()) i = 0 ; i <= regStr.length(); i ++)
-        {
-            if (i != curRegIndex)
-            {
-                std::cout << " ";
-            }
-            else
-            {
-                std::cout << "^";
-            }
-        }
-        std::cout << std::endl;
-
-    }
+    
     std::string inputStr;
     std::string regStr;
-    size_t curInputIndex;
-    size_t curRegIndex;
+
 };
