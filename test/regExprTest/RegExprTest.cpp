@@ -13,10 +13,6 @@ static void regExprTest(const std::string& inputStr, const std::string& regExprS
 
 }
 TEST(regExpr, test1) {
-    regExprTest(
-        "abbaabbecee1157",
-        "((ab*)()((c*e)|ecee)*)*e()(1*(2*3)*5(7))"
-    );
 #if 1
     regExprTest(
         "abbde",
@@ -62,6 +58,10 @@ TEST(regExpr, test1) {
     regExprTest(
         "abbaabbecee1157",
         "((ab*)()((c*e))*)*e()(1*(2*3)*5(7))"
+    );
+    regExprTest(
+        "abbaabbecee1157",
+        "((ab*)()((c*e)|ecee)*)*e()(1*(2*3)*5(7))"
     );
     regExprTest(
         "abbaabbeceee115732357",
