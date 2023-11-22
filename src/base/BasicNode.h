@@ -21,10 +21,22 @@ public:
 
 	void addChildren(std::shared_ptr<BasicNode> nd);
 	std::list<BasicNode *> getChildren();
-
+	std::shared_ptr<BasicNode> getChildrenByIndex(size_t index)
+	{
+		auto it {children.begin()};
+		while(index -- != 0)
+		{
+			it ++;
+		}
+		return *it;
+	}
 	std::string getData();
 	void setData(std::string data);
-
+	void clearChildren()
+	{
+		children.pop_back();
+		_children.pop_back();
+	}
 protected:
 	void setParent(BasicNode *nd);
 

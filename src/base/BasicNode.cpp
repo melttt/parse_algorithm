@@ -23,7 +23,7 @@ BasicNode::~BasicNode() {
 void BasicNode::addChildren(std::shared_ptr<BasicNode> nd) {
 	children.push_back(nd);
 	_children.push_back(nd.get());
-	nd->setParent(this);
+	//nd->setParent(this);
 }
 
 std::list<BasicNode*> BasicNode::getChildren() {

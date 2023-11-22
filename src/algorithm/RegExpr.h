@@ -178,8 +178,8 @@ class TopDownRegExprRecognition
 
     public:
     TopDownRegExprRecognition(std::string inputStr, std::string regStr);
-    std::set<RegExprState> parseAlternativesExpr(RegExprState regExprState);
     bool recognition();
+    std::set<RegExprState> parseAlternativesExpr(RegExprState regExprState);
     std::set<RegExprState> parseMultiRegularExpr(std::set<RegExprState> origStates);
     std::set<RegExprState> parseMultiCompoundExpr(RegExprState origState);
     std::set<RegExprState> parseMultRepeatExpr(RegExprState origState);
@@ -189,4 +189,225 @@ class TopDownRegExprRecognition
     std::string inputStr;
     std::string regStr;
 
+};
+
+#include "BasicNode.h"
+class TopDownRegExprParse
+{
+    public:
+    TopDownRegExprParse(std::string curRegExpr)
+    :curRegExpr{curRegExpr}, curRegExprIndex{0}
+    {
+
+    }
+
+    std::shared_ptr<BasicNode> parse()
+    {
+        auto [curNode, resIndex] {parseAlternativesExpr(curRegExpr, 0)};
+        return curNode;
+    }
+
+    std::tuple<std::shared_ptr<BasicNode>, size_t> parseAlternativesExpr(std::string_view str, size_t strIndex)
+    {
+        auto alterSets {splitAlternatives(str)};
+        auto headNode {std::make_shared<BasicNode>("head")};
+        auto prevNode {headNode};
+        auto ppNode{headNode};
+        for(auto &alter : alterSets)
+        {
+            auto [curNode, resIndex] {parseMultiRegularExpr(alter, 0)};
+            if (curNode != nullptr)
+            {
+                auto tmp {std::make_shared<BasicNode>("|")};
+                prevNode->addChildren(tmp);
+                ppNode = prevNode;
+                prevNode = tmp;
+                prevNode->addChildren(curNode);
+            }
+            else
+            {
+                std::cout << "error parseAlternativesExpr\n";
+                return {nullptr, 0};
+            }
+        }
+        if (headNode->getChildren().size() == 0)
+            return {nullptr, 0};
+
+        {
+            auto lastNode {prevNode->getChildrenByIndex(0)};
+            ppNode->clearChildren();
+            ppNode->addChildren(lastNode);
+        }
+        
+        return {headNode->getChildrenByIndex(0), 0};
+    }
+
+    std::tuple<std::shared_ptr<BasicNode>, size_t> parseMultiRegularExpr(std::string_view str, size_t strIndex)
+    {
+        auto headNode {std::make_shared<BasicNode>("head")};
+        auto prevNode {headNode};
+        auto ppNode{headNode};
+        size_t curIndex{strIndex};
+        while(curIndex < str.length())
+        {
+            auto [curNode, resIndex] {parseMultiCompoundExpr(str, curIndex)};
+            curIndex = resIndex;
+            if (curNode != nullptr)
+            {
+                auto tmp {std::make_shared<BasicNode>(".")};
+                prevNode->addChildren(tmp);
+                ppNode = prevNode;
+                prevNode = tmp;
+                prevNode->addChildren(curNode);
+            }
+            else
+            {
+                //throw "parseMultiRegularExpr error!";
+                std::cout << "parseMultiRegularExpr exception!\n";
+                break;
+            }
+        }
+        if (headNode->getChildren().size() == 0)
+            return {nullptr, curIndex};
+        {
+            auto lastNode {prevNode->getChildrenByIndex(0)};
+            ppNode->clearChildren();
+            ppNode->addChildren(lastNode);
+        }
+        
+        return {headNode->getChildrenByIndex(0), curIndex};
+    }
+
+    std::tuple<std::shared_ptr<BasicNode>, size_t> parseMultiCompoundExpr(std::string_view str, size_t strIndex)
+    {
+        auto ret {peekRegExprStar(str, strIndex)};
+        if(ret.has_value())
+        {
+            return parseMultRepeatExpr(str, strIndex, ret.value());
+        }
+        return parseMultSimpleExpr(str, strIndex);
+    }
+
+    std::tuple<std::shared_ptr<BasicNode>, size_t> parseMultRepeatExpr(std::string_view str, size_t strIndex, size_t afterStarIndex)
+    {
+        auto headNode {std::make_shared<BasicNode>("*")};
+        auto prevNode {headNode};
+        size_t curIndex{strIndex};
+        while(curIndex < afterStarIndex - 1)
+        {
+
+            auto [curNode, resIndex] {parseMultSimpleExpr(str, strIndex)};
+            curIndex = resIndex;
+            if (curNode != nullptr)
+            {
+                prevNode->addChildren(curNode);
+            }
+            else
+            {
+                std::cout << "parseMultRepeatExpr exception!\n";
+                break;
+            }
+        }
+        if (headNode->getChildren().size() == 0)
+            return {nullptr, curIndex};
+        return {headNode, curIndex + 1};
+    }
+
+    std::tuple<std::shared_ptr<BasicNode>, size_t> parseMultSimpleExpr(std::string_view str, size_t strIndex)
+    {
+        if (str[strIndex] == ')')
+        {
+            return {nullptr, 0};
+        }
+        if (str[strIndex] != '(')
+        {
+            return {std::make_shared<BasicNode>(std::string(1, str[strIndex])), strIndex + 1};
+        }
+        auto inCloseNum {peekRegExprCloseParen(str, strIndex)};
+        if (inCloseNum.has_value())
+        {
+            std::cout << "(*******************)" << std::endl;
+            std::cout << str.substr(strIndex+ 1, inCloseNum.value()) << std::endl;
+            auto [curNode, resIndex] {parseAlternativesExpr(str.substr(strIndex + 1, inCloseNum.value()), 0)};
+            if (curNode != nullptr)
+            {
+                return {curNode, strIndex + inCloseNum.value() + 2};
+            }
+        }
+        return {nullptr, 0};
+    }
+    private:
+    std::set<std::string_view> splitAlternatives(std::string_view inputStr) 
+    {
+        std::set<std::string_view> results {};
+        for(size_t index = 0, startNum = 0, parenNum = 0; index <= inputStr.length(); index ++)
+        {
+            if (index == inputStr.length() || (inputStr.at(index) == '|' && parenNum == 0))
+            {   
+                results.insert(inputStr.substr(startNum, index - startNum));
+                startNum = index + 1;
+            }
+            else if(inputStr.at(index) == '(')
+            {
+                parenNum ++;
+            }
+            else if(inputStr.at(index) == ')')
+            {
+                parenNum --;
+            }
+        }
+        return results;
+    }
+    std::optional<size_t> peekRegExprStar(std::string_view str, size_t strIndex) const
+    {
+        size_t tmpIndex = strIndex;
+        if (str.at(tmpIndex) != ')' && str.at(tmpIndex) != '(' && str.at(tmpIndex) != '*' && tmpIndex + 1 < str.length() 
+                && str[tmpIndex + 1] == '*')
+        {
+            return tmpIndex + 2;
+        }
+        if (str.at(tmpIndex) == '(')
+        {
+            size_t bracketNum = 1;
+            while(++ tmpIndex < str.length())
+            {
+                if (str.at(tmpIndex) == '(') bracketNum ++;
+                if (str.at(tmpIndex) == ')')
+                {
+                    if (-- bracketNum == 0)
+                    {        
+                        break;
+                    }
+                }
+            }
+            if (++ tmpIndex < str.length() && str.at(tmpIndex) == '*')
+            {
+                return tmpIndex + 1;
+            }
+        }
+        return std::nullopt;
+    }
+    std::optional<size_t> peekRegExprCloseParen(std::string_view str, size_t strIndex) const
+    {
+        auto tmpIndex = strIndex;
+        if (str.at(tmpIndex) == '(')
+        {
+            size_t bracketNum = 1;
+            while(++ tmpIndex < str.length())
+            {
+                if (str.at(tmpIndex) == '(') bracketNum ++;
+                if (str.at(tmpIndex) == ')')
+                {
+                    if (-- bracketNum == 0)
+                    {        
+                        return tmpIndex - strIndex - 1;
+                    }
+                }
+            }
+        }
+
+        return std::nullopt;
+    }
+    std::string curRegExpr;
+    size_t curRegExprIndex;
 };

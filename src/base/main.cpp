@@ -94,6 +94,18 @@ int main(int argc, char *argv[])
         TopDownRegExprRecognition tmp(inputStr, inputGrammer[0]);
         std::cout << tmp.recognition() << std::endl;
     }
+    else if (curAlgorithm == "RegParse")
+    {
+        TopDownRegExprParse tmp(inputStr);
+        auto ret = tmp.parse();
+        if (ret == nullptr)
+        {
+            std::cout << "error parser!" << std::endl;
+            return 0;
+        }
+        BTTree<BasicNode> printer(ret.get(), &BasicNode::getChildren, &BasicNode::getData);
+        printer.print();
+    }
     else
     {
         std::cout << "unsupport algorithm : " << curAlgorithm << std::endl;
