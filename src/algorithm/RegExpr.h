@@ -192,6 +192,77 @@ class TopDownRegExprRecognition
 };
 
 #include "BasicNode.h"
+class RegExprState
+{
+    public:
+        RegExprState(std::string_view regExpr):regExpr{regExpr},regExprIndex{0}{}
+        static std::set<std::string_view> splitAlternatives(std::string_view str)
+        {
+            std::set<std::string_view> results {};
+            for(size_t index = 0, startNum = 0, parenNum = 0; index <= str.length(); index ++)
+            {
+                if (index == str.length() || (str.at(index) == '|' && parenNum == 0))
+                {   
+                    results.insert(str.substr(startNum, index - startNum));
+                    startNum = index + 1;
+                }
+                else if(str.at(index) == '(')
+                {
+                    auto ret {skipCloseParen(str, index)};
+                    if (ret.has_value())
+                    {
+                        index = ret.value() - 1;
+                    }
+                    else
+                    {
+                        return {};
+                    }
+                }
+            }
+            return results;
+        }
+        static std::optional<size_t> skipStar(std::string_view str, size_t curIndex)
+        {
+            if (str.at(curIndex) != ')' && str.at(curIndex) != '(' && str.at(curIndex) != '*' 
+                    && curIndex + 1 < str.length() && str[curIndex + 1] == '*')
+            {
+                return curIndex + 2;
+            }
+            if (str.at(curIndex) == '(')
+            {
+                auto ret {skipCloseParen(str, curIndex)};
+                if (ret.has_value())
+                {
+                    curIndex = ret.value();
+                    if (curIndex < str.length() && str.at(curIndex) == '*')
+                    {
+                        return curIndex + 1;
+                    }
+                }
+            }
+            return std::nullopt;
+        }
+        static std::optional<size_t> skipCloseParen(std::string_view str, size_t curIndex)
+        {
+            if (str.at(curIndex) == '(')
+            {
+                size_t bracketNum = 1;
+                while(++ curIndex < str.length())
+                {
+                    if (str.at(curIndex) == '(') bracketNum ++;
+                    else if (str.at(curIndex) == ')' && -- bracketNum == 0)
+                    {
+                        return curIndex + 1;//tmpIndex - index - 1;
+                    }
+                }
+            }
+            return std::nullopt;
+        }
+        private:
+        std::string_view regExpr;
+        size_t regExprIndex {0};
+};
+
 class TopDownRegExprParse
 {
     public:
