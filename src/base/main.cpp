@@ -98,13 +98,24 @@ int main(int argc, char *argv[])
     {
         TopDownRegExprParse tmp(inputStr);
         auto ret = tmp.parse();
-        if (ret == nullptr)
+        if (ret == std::nullopt)
         {
             std::cout << "error parser!" << std::endl;
             return 0;
         }
-        BTTree<BasicNode> printer(ret.get(), &BasicNode::getChildren, &BasicNode::getData);
-        printer.print();
+        
+        auto ret2 = TreeNodeToBasicNode(ret.value());
+        std::cout << ConvertDotStr(ret.value()) << std::endl;
+        if (ret.value())
+        {
+            BTTree<BasicNode> printer(ret2.get(), &BasicNode::getChildren, &BasicNode::getData);
+            printer.print();
+        }
+        else
+        {
+            std::cout << "empty tree\n";
+        }
+        
     }
     else
     {
