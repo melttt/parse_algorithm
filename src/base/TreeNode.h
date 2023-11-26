@@ -53,6 +53,10 @@ class TreeNode
         {
             return data;
         }
+        bool isLeafNode()
+        {
+            return children.size() == 0;
+        }
     private:
         std::string data;
         std::vector<std::shared_ptr<TreeNode>> children;

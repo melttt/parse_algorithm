@@ -7,6 +7,8 @@
 #include "unger.h"
 #include "CYK.h"
 #include "RegExpr.h"
+#include "NFA.h"
+#include "DFA.h"
 void argsHelpPrint()
 {
     std::cout << "Usage: gen_parse_tree algorithm grammer file" << std::endl;
@@ -106,10 +108,23 @@ int main(int argc, char *argv[])
         
         auto ret2 = TreeNodeToBasicNode(ret.value());
         std::cout << ConvertDotStr(ret.value()) << std::endl;
+        
         if (ret.value())
         {
             BTTree<BasicNode> printer(ret2.get(), &BasicNode::getChildren, &BasicNode::getData);
             printer.print();
+
+            NFA nfa{};
+            if (nfa.buildNFA(ret.value()))
+            {
+                std::cout << "******************" << std::endl;
+                std::cout << nfa.ConvertToDotStr() << std::endl;
+                std::cout << "******************" << std::endl;
+                DFA dfa(nfa);
+                std::cout << dfa.ConvertToDotStr() << std::endl;
+            }
+            
+            
         }
         else
         {
