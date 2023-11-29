@@ -13,13 +13,11 @@ class Node
         {
             return id;
         }
-        bool operator<(const Node& t) const
+        auto operator<=>(const Node&) const = default;
+        bool operator==(const Node&) const = default;
+        auto getId()
         {
-            return this->id < t.id;
-        }
-        bool operator==(const Node &tt) const
-        {
-            return this->id == tt.id;
+            return id;
         }
     private:
         NodeId id;
@@ -34,7 +32,7 @@ class Edge
         static const inline std::string epsilon{"\u03B5"};
     public:
         Edge(NodeId inputId, NodeId outputId, std::string data)
-        :inputId{inputId}, outputId{outputId}, data{std::move(data)}{}
+        :inputId{inputId}, outputId{outputId}, data{data}{}
         NodeId getInputId() const
         {
             return inputId;
@@ -45,12 +43,12 @@ class Edge
         }
         std::string getData() const
         {
-            return data;
+            return *data.begin();
         }
     private:
         NodeId inputId;
         NodeId outputId;
-        std::string data;
+        std::vector<std::string> data;
 };
 class NFA
 {

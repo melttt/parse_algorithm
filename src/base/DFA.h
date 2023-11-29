@@ -2,9 +2,11 @@
 #include <set>
 #include <map>
 #include <queue>
+#include <algorithm>
 #include "NFA.h"
-using NodeSet = std::set<Node>;
 
+using NodeSet = std::set<Node>;
+using MinDFASet = std::set<Node>;
 class DFANode
 {
     public:
@@ -55,6 +57,82 @@ class DFA
     DFA(NFA nfa):nfa{nfa}
     {
         buildDFA();
+        buildEndNodes();
+        minimization();
+    }
+    void minimization()
+    {
+        buildOutDegreeGraphAndSigma();
+        std::set<MinDFASet> partition;
+        std::set<MinDFASet> workList;
+        MinDFASet partition1,partition2;
+        for(auto node : nodes)
+        {
+            if (isFinalNode(node.getNodeSet()))
+            {
+                partition1.insert(node.getNodeId());
+            }
+            else
+            {
+                partition2.insert(node.getNodeId());
+            }
+        }
+        partition.insert(partition1);
+        partition.insert(partition2);
+        workList = partition;
+
+        while(!workList.empty())
+        {
+            auto s {*workList.begin()};
+            workList.erase(s);
+            for(auto c : sigma)
+            {
+                //calc image
+                auto image {makeImage(c, s)};
+                auto tempPartition{partition};
+                for(auto q : tempPartition)
+                {
+                    decltype(image) q1{},q2{};
+                    std::set_intersection(image.begin(), image.end(), q.begin(), q.end(), std::inserter(q1, q1.begin()));
+                    std::set_difference(q.begin(), q.end(), q1.begin(), q1.end(), std::inserter(q2, q2.begin()));
+
+                    if (!q1.empty() && !q2.empty())
+                    {
+                        partition.erase(q);
+                        partition.insert(q1);
+                        partition.insert(q2);
+
+                        if (workList.contains(q))
+                        {
+                            workList.erase(q);
+                            workList.insert(q1);
+                            workList.insert(q2);
+                        }
+                        else if(q1.size() <= q2.size())
+                        {
+                            workList.insert(q1);
+                        }
+                        else
+                        {
+                            workList.insert(q2);
+                        }
+                    }
+                }
+
+            }
+        }
+
+
+        for(size_t index = 0;auto part : partition)
+        {
+            std::cout << "min node index" << index ++ << " ";
+            for(auto pa : part)
+            {
+                std::cout << pa.getId() << ", ";
+            }
+            std::cout << std::endl;
+        }
+
     }
     std::string ConvertToDotStr()
     {
@@ -66,21 +144,62 @@ class DFA
             auto nodeInfo {"[label=\"" + std::to_string(node) + "\"" + finalInfo + "]\n"};
             res += nodeId + nodeInfo;
         }
-        for(auto edges : graph)
+        for(auto edges : inDdgreeGraph)
+        {
+            for(auto edge : edges)
             {
-                for(auto edge : edges)
-                {
-                    auto inputIdStr{dotGetNodeStr(edge.getInputId())};
-                    auto outputIdStr{dotGetNodeStr(edge.getOutputId())};
-                    auto edgeInfo{inputIdStr + "->" + outputIdStr + "[label=\"" + edge.getData() + "\"]\n"};
-                    res += edgeInfo;
-                }
+                auto inputIdStr{dotGetNodeStr(edge.getInputId())};
+                auto outputIdStr{dotGetNodeStr(edge.getOutputId())};
+                auto edgeInfo{inputIdStr + "->" + outputIdStr + "[label=\"" + edge.getData() + "\"]\n"};
+                res += edgeInfo;
             }
+        }
         res += "}";
         return res;
     }
 
     private:
+    MinDFASet makeImage(std::string edgeData, MinDFASet s)
+    {
+        MinDFASet ret;
+        for(auto node : s)
+        {
+            for(auto edge : outDdgreeGraph[node])
+            {
+                if(edge.getData() == edgeData)
+                {
+                    ret.insert(edge.getInputId());
+                }
+            }
+        }
+        return ret;
+    }
+    void buildOutDegreeGraphAndSigma()
+    {
+        for(auto node : nodes)
+        {
+            outDdgreeGraph.push_back({});
+        }
+        for(auto edges : inDdgreeGraph)
+        {
+            for(auto edge : edges)
+            {
+                sigma.insert(edge.getData());
+                outDdgreeGraph[edge.getOutputId()].emplace_back(edge);
+            }
+        }
+    }
+    void buildEndNodes()
+    {
+        for(size_t index = 0; auto node : nodes)
+        {
+            if(isFinalNode(node.getNodeSet()))
+            {
+                endNodesIndex.insert(index);
+            }
+            index ++;
+        }
+    }
     bool isFinalNode(const NodeSet &nodeSet)
     {
         for(auto node : nodeSet)
@@ -133,12 +252,12 @@ class DFA
     DFANode& makeDFANode(NodeSet nodeSet)
     {
         nodes.emplace_back(std::move(nodeSet), nodes.size());
-        graph.push_back({});
+        inDdgreeGraph.push_back({});
         return nodes.back();
     }
     void makeDFAEdge(DFANode inputNodes, DFANode outputNodes, std::set<std::string> edgesData)
     {
-        graph[inputNodes].emplace_back(inputNodes, outputNodes, edgesData);
+        inDdgreeGraph[inputNodes].emplace_back(inputNodes, outputNodes, edgesData);
     }
 
     std::set<std::string> getNoEpsilonEdgeData(NodeSet nodeSet)
@@ -212,6 +331,9 @@ class DFA
     }
 
     NFA &nfa;
-    std::vector<std::vector<DFAEdge>> graph;
+    std::vector<std::vector<DFAEdge>> inDdgreeGraph;
+    std::vector<std::vector<DFAEdge>> outDdgreeGraph;
     std::vector<DFANode> nodes;
+    std::set<std::string> sigma;
+    std::set<size_t> endNodesIndex;
 };
