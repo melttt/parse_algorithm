@@ -121,7 +121,10 @@ int main(int argc, char *argv[])
                 std::cout << nfa.ConvertToDotStr() << std::endl;
                 std::cout << "******************" << std::endl;
                 DFA dfa(nfa);
-                std::cout << dfa.ConvertToDotStr() << std::endl;
+                auto [firstRes, secondRes] {dfa.ConvertToDotStr()};
+                std::cout << firstRes << std::endl;
+                std::cout << "******************" << std::endl;
+                std::cout << secondRes << std::endl;
             }
             
             
