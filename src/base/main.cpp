@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     }
     else if (curAlgorithm == "RegParse")
     {
-        TopDownRegExprParse tmp(inputStr);
+        TopDownRegExprParse tmp(inputGrammer[0]);
         auto ret = tmp.parse();
         if (ret == std::nullopt)
         {
@@ -113,18 +113,26 @@ int main(int argc, char *argv[])
         {
             BTTree<BasicNode> printer(ret2.get(), &BasicNode::getChildren, &BasicNode::getData);
             printer.print();
-
-            NFA nfa{};
+            
+            PARSE_UTIL::NFA nfa{};
             if (nfa.buildNFA(ret.value()))
             {
                 std::cout << "******************" << std::endl;
-                std::cout << nfa.ConvertToDotStr() << std::endl;
+                std::cout << nfa.getDotStr() << std::endl;
                 std::cout << "******************" << std::endl;
-                DFA dfa(nfa);
-                auto [firstRes, secondRes] {dfa.ConvertToDotStr()};
+                PARSE_UTIL::DFA dfa(nfa);
+                auto [firstRes, secondRes] {dfa.getDotTowStr()};
                 std::cout << firstRes << std::endl;
                 std::cout << "******************" << std::endl;
                 std::cout << secondRes << std::endl;
+                if (dfa.isMatch(inputStr).has_value())
+                {
+                    std::cout << "success parse!" << std::endl;
+                }
+                else
+                {
+                    std::cout << "error parse!" << std::endl;
+                }
             }
             
             

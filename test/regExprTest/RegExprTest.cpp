@@ -5,19 +5,39 @@
 #include "RegExpr.h"
 #include "BasicNode.h"
 #include "BTNode.h"
+#include "DFA.h"
 static void regExprTest(const std::string& inputStr, const std::string& regExprStr)
 {
+    
     TopDownRegExprRecognition tmp(inputStr, regExprStr);
-    auto ret = tmp.recognition();
+    auto ret {tmp.recognition()};
+    
+    
+    
+    TopDownRegExprParse tmp2(regExprStr);
+    auto tree {tmp2.parse()};
+    auto ret2 {!ret};
+    if (tree.has_value())
+    {
+        PARSE_UTIL::NFA nfa{};
+        if (nfa.buildNFA(tree.value()))
+        {
+            PARSE_UTIL::DFA dfa(nfa);
+            ret2 = dfa.isMatch(inputStr).has_value();
+        }
+    }
+
+    EXPECT_EQ(ret, ret2);
     EXPECT_NE(ret, false);
 
 }
 TEST(regExpr, test1) {
-#if 1
+
     regExprTest(
         "abbde",
         "ab*"
     );
+#if 1
     regExprTest(
         "abcdeef",
         "abc|abcde||"
@@ -26,6 +46,7 @@ TEST(regExpr, test1) {
         "abcdeef",
         "(abc|)(deef|abc)"
     );
+    
     regExprTest(
         "abcefg",
         "((a|b|c|e|f)*)g"
@@ -34,6 +55,7 @@ TEST(regExpr, test1) {
     "abcef",
     "(abc|(ab)*)(c|)ef"
     );
+
     regExprTest(
         "abbdeef",
         "ab*de*e*"

@@ -18,7 +18,7 @@ namespace PARSE_UTIL
                 auto operator<=>(const Node&) const = default;
                 bool operator==(const Node&) const = default;
                 NodeId getId();
-                Graph::Node::operator std::string();
+                operator std::string();
             private:
                 NodeId id{static_cast<NodeId>(-1ul)};
         };
@@ -31,8 +31,8 @@ namespace PARSE_UTIL
                 Edge(Node inDegreeNode, Node outDegreeNode, std::string data);
                 Edge(Node inDegreeNode, Node outDegreeNode, std::vector<std::string> data);
 
-                Graph::Node Graph::Edge::getInDegreeNode() const;
-                Graph::Node Graph::Edge::getOutDegreeNode() const;
+                Graph::Node getInDegreeNode() const;
+                Graph::Node getOutDegreeNode() const;
                 std::string getData() const;
             private:
                 Node inDegreeNode, outDegreeNode;
@@ -46,17 +46,15 @@ namespace PARSE_UTIL
             const Node& makeNewNode();
             void makeNewEdge(Node startNode, Node endNode, std::string data);
             std::string getDotStr();
-            inline void setEndNode(Node node);
-            inline void setStartNode(Node node);
-            inline const NodeSet& getStartNode() const; 
-            inline const NodeSet& getEndNode() const;
-            inline bool isEndNode(Node node) const;
-            inline bool isStartNode(Node node) const;
+             void setEndNode(Node node);
+             void setStartNode(Node node);
+             const NodeSet& getStartNode() const; 
+             const NodeSet& getEndNode() const;
+             bool isEndNode(Node node) const;
+             bool isStartNode(Node node) const;
             const std::vector<Node>& getNodes() const;
             const AdjacencyList& getAdjacencyList() const;
         private:
-            
-
             std::vector<Node> nodes;
             NodeSet startNode, endNode;
             AdjacencyList adjacencyList;

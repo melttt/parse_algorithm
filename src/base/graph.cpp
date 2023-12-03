@@ -86,7 +86,7 @@ std::string Graph::getDotStr()
     std::string res {"digraph G{\n"};
     for(auto node : nodes)
     {
-        decltype(res) nodeId{node};
+        decltype(res) nodeId{static_cast<std::string>(node)};
         auto finalInfo {isEndNode(node) ? ", shape=doublecircle": ", shape=circle"};
         auto nodeInfo {"[label=\"" + std::to_string(node) + "\"" + finalInfo + "]\n"};
         res += nodeId + nodeInfo;
@@ -96,8 +96,8 @@ std::string Graph::getDotStr()
     {
         for(Graph::Edge edge : edges)
         {
-            decltype(res) inputIdStr{edge.getInDegreeNode()};
-            decltype(res) outputIdStr{edge.getOutDegreeNode()};
+            decltype(res) inputIdStr{static_cast<std::string>(edge.getInDegreeNode())};
+            decltype(res) outputIdStr{static_cast<std::string>(edge.getOutDegreeNode())};
             auto edgeInfo{inputIdStr + "->" + outputIdStr + "[label=\"" + edge.getData() + "\"]\n"};
             res += edgeInfo;
         }
