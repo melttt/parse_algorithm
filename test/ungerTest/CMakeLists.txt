@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.6)
 project(UngerTest)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+#set(CMAKE_CXX_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi -fuse-ld=lld")
 add_executable(UngerTest UngerTest.cpp)
 target_link_libraries(UngerTest PUBLIC gtest pthread parser)

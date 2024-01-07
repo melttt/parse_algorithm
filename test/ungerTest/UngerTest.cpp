@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <optional>
 #include <chrono>
+#include <ranges>
 #include "GramTable.h"
 #include "unger.h"
 #include "BasicNode.h"
@@ -18,6 +19,7 @@ static void ungerTest(std::vector<std::string> gramVec, std::string inputStr)
     std::cout << "cost time : " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << std::endl;
 }
 TEST(unger, test1) {
+
     ungerTest({
        "S:Sb|a"
     }, 

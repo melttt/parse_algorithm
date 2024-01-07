@@ -310,3 +310,36 @@ GramTable::PartitionTable GramTable::partition(std::string_view str, int num, co
     return res;
 }
 
+std::optional<std::map<std::string, std::vector<std::string>>>
+GramTable::getProdsWithOnlyTerms()
+{
+    std::map<std::string, std::vector<std::string>> res;
+    for(auto &[prodLeft, prodRightAlts] : grammerMap)
+    {
+        for(auto &prodRightAlt : prodRightAlts)
+        {
+            bool hasOnlyTerm = false;
+            std::string rightToken;
+            for(auto &rightItem : prodRightAlt)
+            {
+                if (GramTable::isTerm(rightItem))
+                {
+                    hasOnlyTerm = true;
+                    rightToken += rightItem;
+                }
+                else
+                {
+                    if (hasOnlyTerm)
+                    {
+                        return std::nullopt;
+                    }
+                }
+            }
+            if (hasOnlyTerm)
+            {
+                res[rightToken].push_back(prodLeft);
+            }
+        }
+    }
+    return res;
+}

@@ -9,6 +9,7 @@
 #include "RegExpr.h"
 #include "NFA.h"
 #include "DFA.h"
+#include "chartTable.h"
 void argsHelpPrint()
 {
     std::cout << "Usage: gen_parse_tree algorithm grammer file" << std::endl;
@@ -136,10 +137,26 @@ int main(int argc, char *argv[])
             }
             
             
-        }
+        }                 
         else
         {
             std::cout << "empty tree\n";
+        }
+        
+    }
+    else if(curAlgorithm == "chartTable")
+    {
+        
+        try
+        {
+            PARSE_UTIL::ChartTable temp{gramTable, inputStr};
+            auto res {temp.parse()};
+            BTTree<BasicNode> printer(res.get(), &BasicNode::getChildren, &BasicNode::getData);
+            printer.print();
+        }
+        catch(const char *ch)
+        {
+            std::cerr << ch << '\n';
         }
         
     }

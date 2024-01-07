@@ -1,4 +1,6 @@
 #include "DFA.h"
+#include <iterator>
+#include <algorithm>
 namespace PARSE_UTIL
 {
 
@@ -289,7 +291,7 @@ void DFA::buildInitDFA()
                         break;
                     }
                 }
-                
+
                 std::set_intersection(moveNodeSet.begin(), moveNodeSet.end(), nfaEndSet.begin(), nfaEndSet.end(), std::inserter(interSet, interSet.begin()));
                 if (!interSet.empty())
                 {

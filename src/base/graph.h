@@ -14,12 +14,13 @@ namespace PARSE_UTIL
             public:
                 Node() = default;
                 Node(NodeId id);
+                //todo change to const
                 operator NodeId();
                 auto operator<=>(const Node&) const = default;
                 bool operator==(const Node&) const = default;
                 NodeId getId();
                 operator std::string();
-            private:
+            protected:
                 NodeId id{static_cast<NodeId>(-1ul)};
         };
         class Edge
@@ -30,11 +31,23 @@ namespace PARSE_UTIL
                 Edge() = default;
                 Edge(Node inDegreeNode, Node outDegreeNode, std::string data);
                 Edge(Node inDegreeNode, Node outDegreeNode, std::vector<std::string> data);
-
+                auto operator<=>(const Edge&) const = default;
+                bool operator==(const Edge&) const = default;
                 Graph::Node getInDegreeNode() const;
                 Graph::Node getOutDegreeNode() const;
                 std::string getData() const;
-            private:
+                void setData(std::string tmp)
+                {
+                    if (data.size() > 0)
+                    {
+                        data[0] = tmp;
+                    }
+                    else
+                    {
+                        data.push_back(tmp);
+                    }
+                }
+            protected:
                 Node inDegreeNode, outDegreeNode;
                 std::vector<std::string> data;
         };
@@ -46,15 +59,15 @@ namespace PARSE_UTIL
             const Node& makeNewNode();
             void makeNewEdge(Node startNode, Node endNode, std::string data);
             std::string getDotStr();
-             void setEndNode(Node node);
-             void setStartNode(Node node);
-             const NodeSet& getStartNode() const; 
-             const NodeSet& getEndNode() const;
-             bool isEndNode(Node node) const;
-             bool isStartNode(Node node) const;
+            void setEndNode(Node node);
+            void setStartNode(Node node);
+            const NodeSet& getStartNode() const; 
+            const NodeSet& getEndNode() const;
+            bool isEndNode(Node node) const;
+            bool isStartNode(Node node) const;
             const std::vector<Node>& getNodes() const;
             const AdjacencyList& getAdjacencyList() const;
-        private:
+        protected:
             std::vector<Node> nodes;
             NodeSet startNode, endNode;
             AdjacencyList adjacencyList;
