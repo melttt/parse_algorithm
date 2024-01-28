@@ -3,6 +3,7 @@
 #include <string_view>
 #include <iostream>
 #include <memory>
+#include <array>
 #include "BasicNode.h"
 #include "GramTable.h"
 class CYK 

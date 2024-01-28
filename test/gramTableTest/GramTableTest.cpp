@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 #include <optional>
 #include "GramTable.h"
-
+#include "LL_k.h"
+#include "BasicNode.h"
+#include "BTNode.h"
 TEST(gramTable, testStaticFunc) {
   EXPECT_EQ(GramTable::isTerm("+"), true);
   EXPECT_EQ(GramTable::isTerm("a"), true);
@@ -13,7 +15,6 @@ TEST(gramTable, testStaticFunc) {
   partitionTable = GramTable::partition("12332", 3, std::nullopt);
   EXPECT_EQ(partitionTable.size(), 21);
 }
-
 
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);

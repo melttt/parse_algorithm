@@ -1,4 +1,10 @@
 #include "GramTable.h"
+#include <ranges>
+#include <algorithm>
+#include <numeric>
+#include <iterator>
+#include <format>
+#include <iterator>
 GramTable::GramTable(std::vector<std::string> gramLines)
 {
     for(const auto& line : gramLines)
@@ -22,11 +28,12 @@ GramTable::GramTable(std::vector<std::string> gramLines)
                 }
                 
             }
-            
+            {
+                using namespace std::literals;
+                prodsPairs.emplace_back(prodLeft, std::accumulate(std::begin(prodRightAlt), std::end(prodRightAlt), ""s));
+            }
         }
     }
-
-    
 }       
 std::optional<std::tuple<GramTable::BnfNoTermToTermMap, GramTable::BnfTwoTermToTermMap>> GramTable::getBNFInfo()
 {
@@ -37,8 +44,6 @@ std::optional<std::tuple<GramTable::BnfNoTermToTermMap, GramTable::BnfTwoTermToT
     {
         for(auto &prodRightAlt : prodRightAlts)
         {
-
-            
             if (prodRightAlt.size() == 1 && isTerm(prodRightAlt[0]) && !prodRightAlt[0].empty())
             {
                 bnfNoTermToTermMap[prodRightAlt[0]].insert(prodLeft);
@@ -251,10 +256,166 @@ GramTable::FirstMap GramTable::getFirstMap()
     }
     return firstMap;
 }
+
+std::set<std::string> updateKMap(const std::set<std::string> &prevCandidationMap, const std::set<std::string>& newSet, size_t k)
+{
+    std::set<std::string> res;
+    for(const auto &newEle : newSet)
+    {
+        for(const auto &prevEle : prevCandidationMap)
+        {
+            auto newRes {newEle + prevEle};
+            if (newRes.size() > k)
+            {
+                newRes = newRes.substr(0, k);
+            }
+            res.insert(newRes);
+        }
+    }
+    return res;
+}
+bool GramTable::calcFirstKMap(FirstKMap &firstKMap, size_t k)
+{
+    bool change = false;
+    for(const auto &[prodLeft, prodRight] : getProdsPair())
+    {
+        auto &leftSet {firstKMap[prodLeft]};
+        std::remove_reference<decltype(leftSet)>::type candidationSet;
+        std::find_if(std::begin(prodRight), std::end(prodRight), [&candidationSet, &firstKMap, &k](const auto& ch)
+        {
+            if (!candidationSet.empty() && std::all_of(std::begin(candidationSet), std::end(candidationSet), 
+                [&k](const auto &str) {return str.length() == k;}))
+            {
+                return true;
+            }
+
+            auto& curTokenFirstSet{firstKMap[std::string(1, ch)]};
+            if (curTokenFirstSet.size() == 0)
+            {
+                std::erase_if(candidationSet, [&k](auto const& x){
+                    return x.size() != k;
+                });
+                return true;
+            }
+
+            decltype(candidationSet) resSet;
+            CartesianProduct(std::begin(candidationSet), std::end(candidationSet), std::begin(curTokenFirstSet), std::end(curTokenFirstSet), 
+            [&k, &resSet](const auto& x, const auto& y){
+                auto resStr {x + y};
+                if (resStr.size() > k)
+                {
+                    resStr = resStr.substr(0, k);
+                }
+                resSet.insert(resStr);
+            });
+            candidationSet = std::move(resSet);
+            return false;
+        });
+
+        auto tempResSet {leftSet};
+        tempResSet.merge(candidationSet);
+        if (tempResSet != leftSet)
+        {
+            change = true;
+            leftSet = std::move(tempResSet);
+        }
+    }
+    return change;
+}
+std::optional<GramTable::FirstKMap> GramTable::getFirstKMap(size_t k)
+{
+    FirstKMap firstKMap;
+    for(auto term : termSet)
+    {
+        firstKMap[std::string(term)].insert(std::string(term));
+    }
+    for(const auto &[prodLeft, prodRight] : getProdsPair())
+    {
+        if (prodRight == GramTable::nullSymbol)
+        {
+            firstKMap[prodLeft].insert(prodRight);
+        }
+    }
+    while(calcFirstKMap(firstKMap, k));
+
+    std::cout << "--------------\n";
+    for(const auto &[k, v] : firstKMap)
+    {
+        std::cout << (k == GramTable::nullSymbol ? "\u03B5" : k )<< " : ";
+        for(const auto & vv : v)
+        {
+            std::cout << std::format("{0} ", vv == GramTable::nullSymbol ? "\u03B5" : vv);
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "--------------\n";
+    return firstKMap;
+}
+bool GramTable::calcFollowKMap(FollowKMap &followKMap, size_t k, FirstKMap &firstKMap)
+{
+    bool change = false;
+    for(const auto &[prodLeft, prodRight] : getProdsPair())
+    {
+        auto candidationSet {followKMap[prodLeft]};
+        std::for_each(prodRight.rbegin(), prodRight.rend(), [&candidationSet, &followKMap, &firstKMap, k, &change](auto ch)
+        {
+            auto curStr {std::string(1, ch)};
+            auto &curFollow {followKMap[curStr]};
+            auto &curFirst {firstKMap[curStr]};
+            if (!GramTable::isTerm(curStr))
+            {
+                for(auto &candidationItem : candidationSet)
+                {
+                    if (candidationItem.length() == k &&
+                        !curFollow.contains(candidationItem))
+                    {
+                        change = true;
+                        curFollow.insert(candidationItem);
+                    }
+                }
+            }
+
+            std::remove_reference<decltype(curFollow)>::type resSet;
+            CartesianProduct(std::begin(candidationSet), std::end(candidationSet), std::begin(curFirst), std::end(curFirst), 
+            [&k, &resSet](const auto& x, const auto& y){
+                auto resStr {y + x};
+                if (resStr.size() > k)
+                {
+                    resStr = resStr.substr(0, k);
+                }
+                resSet.insert(resStr);
+            });
+
+            candidationSet = std::move(resSet);
+        });
+    }
+    return change;
+}
+
+std::optional<GramTable::FollowKMap> GramTable::getFollowKMap(size_t k, FirstMap &firstKMap)
+{
+    FollowKMap followKMap;
+    //start symbol S adds k '#'
+    followKMap[startNoTerm].insert(std::string(k, inputEndTerm[0]));
+    while(calcFollowKMap(followKMap, k, firstKMap));
+    
+    std::cout << "--------------\n";
+    for(const auto &[k, v] : followKMap)
+    {
+        if (GramTable::isTerm(k)) continue;
+        std::cout << (k == GramTable::nullSymbol ? "\u03B5" : k )<< " : ";
+        for(const auto & vv : v)
+        {
+            std::cout << std::format("{0} ", vv == GramTable::nullSymbol ? "\u03B5" : vv);
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "--------------\n";
+    return followKMap;
+}
 void GramTable::calcPartition(const std::string_view &str, int num, PartitionTable &res, PartitionTableItem &resItem,
         const std::vector<int> &minVec, const std::vector<std::set<std::string>> &firstVec)
 {
-    
     if (num == 0)
     {
         if (str.empty())

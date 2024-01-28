@@ -52,7 +52,7 @@ namespace PARSE_UTIL
                 std::vector<std::string> data;
         };
 
-
+        // add virtual dtor
         public:
             using NodeSet = std::set<Graph::Node>;
             using AdjacencyList = std::vector<std::vector<Graph::Edge>>;

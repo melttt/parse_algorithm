@@ -2,6 +2,7 @@
 #include <optional>
 #include <string_view>
 #include <iostream>
+#include <array>
 #include "BasicNode.h"
 #include "GramTable.h"
 class unger 
