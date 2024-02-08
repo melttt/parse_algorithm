@@ -5,7 +5,7 @@
 #include "BasicNode.h"
 #include "BTNode.h"
 
-TEST(LL_kTest, testLL_kTest) {
+TEST(LL_kTest, testLL_kTest1) {
   // GramTable gramTable{{
   //      "S:SB|a",
   //      "B:b"
@@ -55,6 +55,34 @@ TEST(LL_kTest, testLL_kTest) {
     {
       std::cerr << e << '\n';
     }
+    
+
+}
+
+TEST(LL_kTest, testLL_kTest2) {
+    GramTable gramTable{{
+       "S:aSA|",
+       "A:abS|c"
+    }};                                                       
+
+    try
+    {
+        auto x {PARSE_UTIL::StrongLLk(gramTable, "aaabacc", 1)};
+        auto root {x.parse()};
+        if (root.get())
+        {
+            BTTree<BasicNode> printer(root.get(), &BasicNode::getChildren, &BasicNode::getData);
+            printer.print();
+        }
+        else
+        {
+            std::cout << "Conflict! not llk!\n";
+        }
+        }
+        catch(const char* e)
+        {
+        std::cerr << e << '\n';
+        }
     
 
 }
