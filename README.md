@@ -3,3 +3,4 @@
 - CYK parse
 - regular parse(top-down and automaton)
 - chart parse(earley, top-down, bottom-up and left-corner)
+- ll parse(strong llk)
